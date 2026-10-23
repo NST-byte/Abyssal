@@ -9,6 +9,8 @@
     { top: [5, 24, 48], bot: [1, 7, 18], glow: ['#5ff2e6', '#9d8cff', '#5f9dff'], rays: 0 },
     { top: [4, 12, 32], bot: [1, 2, 9], glow: ['#9d8cff', '#5ff2e6', '#ff7fd8'], rays: 0 },
     { top: [10, 5, 28], bot: [0, 0, 4], glow: ['#ff7fd8', '#ffb35f', '#9d8cff', '#ff5f7f'], rays: 0 },
+    { top: [34, 8, 14], bot: [6, 0, 2], glow: ['#ff6f4f', '#ffb35f', '#ff9ad9'], rays: 0 },
+    { top: [40, 30, 12], bot: [8, 4, 0], glow: ['#ffe9a6', '#fff4d6', '#ffb35f', '#7ef0c8'], rays: 0.03 },
   ];
 
   let cv, cx, W = 0, H = 0, dpr = 1;

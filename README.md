@@ -1,214 +1,227 @@
-# ABYSSAL – Tiefsee-Idle
+# ABYSSAL – Tiefsee-Incremental
 
-Du bist das KI-Kernsystem der versunkenen Forschungsstation **Tethys-7**. Du sammelst Biolumineszenz (**Lumen**), baust die Station aus und tauchst Zone für Zone tiefer ab, bis ganz unten im Graben das **Tiefenherz** schlägt. Dort kannst du die **Gezeitenwende** auslösen: Neustart mit dauerhaften **Perlen**.
+Du bist das KI-Kernsystem der versunkenen Forschungsstation **Tethys-7**. Du sammelst Biolumineszenz (**Lumen**), baust eine Station mit echten Verarbeitungsketten auf, erkundest die Tiefsee mit U-Booten und tauchst Zone für Zone tiefer, bis in die **Herzkammer** 15 km unter dem Meer. Zwei Prestige-Ebenen (**Gezeitenwende**, **Weltenwende**) und ein endloser **Tiefenrekord** tragen das Spiel weit über 50 Stunden.
 
-Mit jeder Zone wird es dunkler, das Leben leuchtet stärker, und es kommt eine neue Spielmechanik dazu.
+**Version 2.0** ist eine grundlegende Überarbeitung. Was sich warum geändert hat, steht unten unter „Design-Überarbeitung“.
 
 ---
 
 ## Start
 
 **Windows:** Doppelklick auf `start.bat` oder direkt auf `index.html`.
-
 **Andere Systeme:** `index.html` im Browser öffnen.
 
-- Kein Server, keine Installation, kein Internet nötig. Alles läuft lokal aus der HTML-Datei.
-- Getestet mit Chromium (Playwright). Aktuelle Versionen von Chrome, Edge und Firefox sollten genauso laufen.
-- Gespeichert wird im `localStorage` des Browsers, also pro Browser und pro Speicherort der Datei. Wer den Ordner verschiebt oder den Browser wechselt, nimmt den Stand per **Export/Import** mit (Einstellungen → Spielstand).
+- Kein Server, keine Installation, kein Internet. Alles läuft lokal aus der HTML-Datei.
+- Gespeichert wird im `localStorage` des Browsers. Für einen Wechsel von Rechner oder Browser gibt es Export/Import in den Einstellungen.
+- **Alte Spielstände (v1) werden automatisch übernommen.** Im Perlen-Shop ausgegebene Perlen werden erstattet, Expeditions-Artefakte werden zu Relikten.
 
-> Hinweis: Firefox kann bei `file://`-Seiten den Speicher je nach Einstellung strenger behandeln. Falls der Fortschritt dort nicht erhalten bleibt, Chrome/Edge nehmen oder einen beliebigen lokalen Server verwenden (z. B. `npx serve .`). Für das Spiel selbst ist kein Server nötig.
-
----
-
-## Projektstruktur
-
-```
-abyssal/
-├── index.html          Grundgerüst
-├── start.bat           Windows-Starter (öffnet index.html)
-├── css/style.css       komplettes Design, Animationen, Responsive
-├── js/
-│   ├── config.js       ZENTRALE BALANCE-KONFIGURATION (alle Zahlen)
-│   ├── format.js       Zahlen-/Zeitformatierung (K, M, B … / wiss. / ing.)
-│   ├── state.js        Zustandsmodell, Lauf-Reset, Validierung kaputter Stände
-│   ├── economy.js      Effekt-Engine, Produktion, Kostenformeln
-│   ├── unlocks.js      Bedingungen, Aufträge, Logbuch, Feature-Freischaltung
-│   ├── actions.js      alle Spieleraktionen (prüfen selbst ihre Bedingungen)
-│   ├── core.js         Zeitsimulation, Offline-Fortschritt, Gezeitenwende
-│   ├── save.js         Speichern/Laden, Backup, Export/Import
-│   ├── icons.js        selbst gezeichnete SVG-Icons
-│   ├── audio.js        optionale Soundeffekte (WebAudio-Synthese, keine Dateien)
-│   ├── scene.js        Hintergrund-Canvas (Wasser, Lichtstrahlen, Lebewesen)
-│   ├── ui.js           Oberfläche: Panels, Karten, Modals, Toasts
-│   ├── tutorial.js     kurzes Kontext-Tutorial
-│   └── main.js         Start, Hauptschleife, Eingaben, Irrlichter, Autosave
-└── tests/
-    ├── harness.js      lädt die DOM-freien Module in Node
-    ├── run-tests.js    Unit-Tests + Langzeit-Simulationen
-    ├── simulate.js     Wirtschafts-Bot (spielt mit der echten Spiellogik)
-    └── e2e.js          End-to-End-Test im echten Browser (Playwright)
-```
-
-Kein Framework, keine Abhängigkeiten. Die Module sind klassische Skripte mit einem gemeinsamen Namespace `AB`, weil ES-Module unter `file://` in Chrome blockiert werden. Alles bis einschließlich `save.js` kommt ohne DOM aus und läuft deshalb auch in Node (Tests, Simulation).
+> Firefox kann `localStorage` unter `file://` je nach Datenschutzeinstellung einschränken. Dann Chrome/Edge nehmen oder einen lokalen Server starten (z. B. `npx serve .`).
 
 ---
 
-## Spielmechaniken
+## Design-Überarbeitung (v1 → v2)
 
-### Kern-Loop
-1. **Lumen-Kern pulsen** (Klick / Leertaste): sofort Lumen. Später skaliert der Puls mit deiner Produktion.
-2. **Anlagen** kaufen: produzieren automatisch. Kosten steigen pro Kauf um 15 %.
-3. **Verbesserungen**: einmalige Käufe, die bei bestimmten Anlagenzahlen freigeschaltet werden (je ×2), dazu Synergien, Puls- und globale Upgrades.
-4. **Abstieg** in die nächste Zone: kostet Ressourcen und bringt einen dauerhaften Tiefenbonus (×1,25 pro Zone) plus neue Mechaniken.
-5. **Gezeitenwende** am Grund: Reset gegen Perlen und dauerhafte Boni.
+### Analyse von v1: Warum es monoton wurde
+1. **Alle 8 Anlagen machten dasselbe** (Lumen/s), nur mit größeren Zahlen. Die einzige Entscheidung war „bester Payback zuerst“.
+2. **Mangan und Daten waren reine Torwächter.** Sie wurden produziert und nie verbraucht, es gab keine Engpässe und keine Abwägungen.
+3. **Die Forschung war eine flache Liste von Multiplikatoren**, die jeder komplett kaufte. Builds gab es keine.
+4. **Expeditionen waren ein Timer für einen Multiplikator.**
+5. **Prestige hatte eine Ebene** mit einem Shop aus Multiplikatoren. Lauf 2 spielte sich genau wie Lauf 1.
+6. **Nach Hadal (~2 h) kam inhaltlich nichts mehr.**
 
-### Zonen und was sie freischalten
-| Zone | Tiefe | Neu |
+### Was geblieben ist
+Zonen und Abstieg als roter Faden, Lumen-Kern (Klick), Anlagen + Upgrades als Grundgerüst, Verstärkung, Protokolle, Überladung, Irrlichter, Aufträge, Logbuch, die Effekt-Engine, das Speicher-/Offline-System und die visuelle Identität.
+
+### Was neu ist und warum
+
+| System | Was es ist | Welches Problem es löst |
 |---|---|---|
-| Schelfkante | 0 m | Planktonnetze, Leuchtalgen, Puls-Upgrades, Aufträge |
-| Dämmerzone | 200 m | **Mangan** (Knollen-Drohnen), **Verstärkung**, Quallen, Anglerfische |
-| Mitternachtszone | 1.000 m | **Daten** (Sonarbojen), **Forschung**, **Protokolle**, **Überladung**, Schlotturbinen, Korallen |
-| Abyssal | 4.000 m | **Expeditionen & Artefakte**, Tiefbohrer, **Tiefenanalyse**, Leviathan-Echos |
-| Hadal | 8.000 m | Tiefenherzen, **Gezeitenwende** |
+| **Station (Modulraster)** | Begrenztes Raster mit Reaktoren, Schmelzen, Fertigungen, Laboren, Prismen, Docks und Nachbarschaftsmodulen (Kühlturm, Relais, Druckresonator) | Räumliche Optimierung, Energie als Budget, echte Abwägung um Platz |
+| **Verarbeitungsketten** | Mangan + Lumen → **Legierung** → mit Daten → **Resonanzkristalle**. Inputs werden **wirklich verbraucht** | Engpässe statt Ansammeln. Tiefe Anlagen und Abstiege brauchen Kettenprodukte |
+| **Tech-Baum mit Gabelungen** | 24 Knoten in 3 Zweigen, 4 exklusive Gabeln, die **Rezepte ändern** (z. B. Kaltschmelze vs. Lichtschmelze) | Die beste Wahl verschiebt sich mit dem Spielstand. Umrüsten ist eine echte Entscheidung |
+| **Strömungen** | Alle 10 min ein neuer Weltzustand mit Vorschau, der einen Bereich verstärkt. Mit Forschung lassen sich Strömungen „halten“ | Temporäre Modifikatoren, auf die man reagiert (umschalten, umbauen, halten). Ausschließlich positiv |
+| **Tiefseekarte** | U-Boote erkunden 30 Sektoren. Danach **Ausbeuten** (begrenzte Außenposten, Dauerbonus) oder **Bergen** (sofortiger Ertrag, Relikte) | Erkundung mit langfristig/kurzfristig-Abwägung |
+| **Relikte** | 12 Relikte mit je bis zu 3 Stufen, dauerhaft über alle Resets | Sammelziel über viele Wenden |
+| **Gezeiten-Baum** | 24 Knoten in 4 Zweigen (Wirtschaft / Aktiv / Passiv & Automatik / Erkundung), je eine Gabel, max. 2 Capstones, **kostenloser Respec bei jeder Wende** | Echte Builds. Prestige eröffnet neue Spielweisen statt nur ×-Boni |
+| **Tiefenproben** | 6 Herausforderungs-Läufe mit Sonderregeln (z. B. „kein Puls“, „Mangan ÷10“), je 3 Stufen, mit **einzigartigen Dauerbelohnungen** | Optionale Ziele für Optimierer, die andere Lösungswege erzwingen |
+| **Schlund & Herzkammer** | Zwei neue Zonen hinter Hadal, erst nach 1 bzw. 3 Gezeitenwenden erreichbar | Neue Ziele für die Phase nach dem ersten Prestige |
+| **Weltenwende + Ursprung** | 2. Prestige-Ebene: setzt auch Perlen und Baum zurück und gibt **Urlicht**. Damit gibt es Automatik, größeres Raster, **Erbstationen** (alternative Starts), drittes Capstone und Dauer-Multiplikatoren | Langfristige Ebene, die den Lauf-Aufbau grundlegend verändert |
+| **Tiefenrekord** | Endloses Bohren aus der Herzkammer, bleibt über alle Resets | Wiederholbare Langzeitprogression für 50 h+ |
+| **Ziel-Hierarchie** | Aufträge (jetzt) · nächste Schritte (diese Sitzung) · Wende, Proben, Relikte, Weltenwende (langfristig) | Immer mehrere klare nächste Ziele, nicht nur „höhere Zahl“ |
 
-### Ressourcen
-- **Lumen**: Hauptwährung für Anlagen, Upgrades, Drohnen, Bojen und Abstiege.
-- **Mangan**: für Verstärkungen, Sonarbojen, Abstiege und Expeditionen.
-- **Daten**: für Forschung, Protokollwechsel, Expeditionen, Tiefenanalyse und Abstiege.
-- **Perlen**: dauerhaft. Jede unausgegebene Perle gibt +2 % Produktion. Alternativ gibst du sie im Perlen-Erbe aus. Das ist eine echte Abwägung.
-
-### Systeme im Detail
-- **Verstärkung** (Mangan): Jede Anlage einzeln verbessern, ×1,25 pro Stufe, Kosten ×3 pro Stufe. Die Kosten wachsen schnell, deshalb lohnt sich das Verteilen.
-- **Forschung** (Daten): 15 Projekte mit Voraussetzungen, darunter Protokoll-Kern, Überladung, Biokatalyse, Druckrumpf und Herzstimmung.
-- **Protokolle** (Spezialisierung, exklusiv):
-  - *Schwarm* (passiv): +0,15 % Produktion pro gebauter Anlage.
-  - *Puls* (aktiv): Puls ×5 und +12 % der Lumen/s pro Klick, Überladung ×3, Irrlichter doppelt so oft.
-  - *Strömung* (Wirtschaft): Mangan ×3, Daten ×2, Expeditionen schneller, mehr Offline-Zeit.
-  Die erste Wahl ist gratis. Ein Wechsel kostet Daten (verdoppelt sich pro Wechsel).
-- **Überladung**: aktive Fähigkeit, 30 s doppelte Produktion, 5 min Abklingzeit (Taste `Q`).
-- **Irrlichter**: seltene, faire Ereignisse. Alle 2–5 min treibt ein Irrlicht 12 s lang durchs Bild. Wer es anklickt, bekommt mit 55 % sofort 90 s Produktion, mit 45 % ×3 Produktion für 25 s. Die Wahrscheinlichkeiten stehen im Logbuch. Wer eins verpasst, verliert nichts.
-- **Expeditionen**: Ein Team gleichzeitig, 2–10 min. Jede Rückkehr bringt garantiert eine Artefakt-Stufe, ohne Zufall. Läuft auch offline weiter.
-- **Tiefenanalyse**: wiederholbares Datenprojekt (+10 % pro Stufe), damit Daten im Late Game nicht wertlos werden.
-- **Aufträge**: 31 geführte Ziele mit Belohnungen. Drei sind gleichzeitig sichtbar, sie dienen auch als roter Faden.
-- **Logbuch**: 55 Erfolge, je +1 % Produktion dauerhaft, auch über Gezeitenwenden hinweg.
-
-### Gezeitenwende (Prestige)
-- **Verfügbar** ab Hadal (8.000 m).
-- **Belohnung:** `Perlen = floor(10 × (Lumen dieses Laufs / 5·10¹³)^0,33)`. Die Kubikwurzel sorgt dafür, dass Weiterspielen sich lohnt, der Ertrag aber abflacht. Den Zeitpunkt wählst du also selbst.
-- **Zurückgesetzt** werden Lumen, Mangan, Daten, Anlagen, Upgrades, Verstärkungen, Forschung, Protokolle, Artefakte und die Tiefe.
-- **Erhalten bleiben** Perlen, Perlen-Erbe, Logbuch, Aufträge, Statistiken und Einstellungen.
-- **Perlen-Erbe:** 9 dauerhafte Upgrades, z. B. Gezeitengedächtnis (+25 %/Stufe), Vorwissen (Start in der Dämmerzone), Treibgut (Startkapital), Tiefenkompass (günstigere Abstiege), Gesichertes Archiv, Automaton (Auto-Kauf), Perlenglanz und Doppelprotokoll (zwei Protokolle gleichzeitig).
-- **Sicherheit:** Vor der Wende zeigt ein Bestätigungsdialog genau, was verloren geht und was bleibt. Der Bestätigen-Knopf wird erst nach 1,2 s aktiv (Schutz gegen Doppelklick). Danach wird sofort gespeichert.
+### Wie die Systeme ineinandergreifen
+- **Mangan** wird von Verstärkung, Schmelzen, Sonarbojen und Abstiegen gebraucht. Du musst entscheiden, wohin es geht.
+- **Daten** fließen in Forschung, Fertigungen (je nach Rezept stark), Protokollwechsel, Tiefenanalyse und späte Abstiege. Die Station warnt, wenn die Verarbeitung eine Ressource auffrisst, die der nächste Abstieg braucht.
+- **Legierung** geht in Schlotturbinen/Korallen, Module, U-Boote, Erkundungen und Abstiege. **Kristalle** brauchen die tiefsten Anlagen, tiefe Erkundungen, Hadal und Herzkammer sowie der Tiefenrekord.
+- **Energie** ist ein Budget, kein Vorrat. Relais senken den Verbrauch, Kühltürme stärken Reaktoren *und* Produktion. Platz im Raster ist knapp.
+- **Strömungen** belohnen Reaktion: Bei „Warmer Strömung“ laufen Schmelzen doppelt, bei „Magnetsturm“ Daten und Fertigungen.
+- **Karte ↔ Station:** Docks bestimmen die Zahl der U-Boote, Schlotfelder liefern Energie, Kristallnester steigern Fertigungen.
+- **Tiefendruck:** Jede erreichte Zone macht Verarbeitungsmodule 15 % effizienter. Abtauchen stärkt also auch die Ketten.
+- **Prioritäten verschieben sich:** Anfangs baust du Produktion auf. Ab der Dämmerzone optimierst du Engpässe. Ab dem Abyssal wägst du Außenposten, Bergungen und Kristalle gegen Legierung ab. Nach der Wende wählst du Builds, in Proben gelten andere Regeln, nach der Weltenwende andere Starts.
 
 ---
 
-## Balancing-System
+## Progression & Zeithorizonte
 
-Alle Zahlen stehen in **`js/config.js`**: Kosten, Raten, Wachstumsfaktoren, Freischaltbedingungen, Abstiegskosten, Forschung, Protokolle, Ereignisse, Prestige-Formel, Shop und Aufträge.
+Die Zeiten unten stammen aus Simulationen mit der echten Spiellogik (siehe Balancing). Ein Mensch, der liest und ausprobiert, braucht etwa 1,5× so lange wie der optimal spielende Bot.
 
-**Formeln:**
-- Wiederholbare Käufe: `Kosten(n) = Basis × Wachstum^n`. Mehrfachkäufe werden als geometrische Reihe exakt berechnet, Max-Kauf analytisch.
-- Produktion einer Anlage: `Basis × Anzahl × (Upgrades × Verstärkung × Synergien) × Global`.
-- Global: `Upgrades/Forschung/Artefakte × Logbuch × Perlen × Tiefe × Schwarm × aktive Boosts`.
-- Alle Boni (Upgrades, Forschung, Protokolle, Artefakte, Perlen-Erbe) laufen durch **eine** Effekt-Engine (`economy.js`). Neue Boni sind daher reine Konfiguration.
-
-**Designprinzipien:**
-- Jede Zone ist ein Plateau: Innerhalb einer Zone wachsen die Amortisationszeiten, bis der nächste Abstieg das Wachstum wieder öffnet. Abstiege verlangen die Nebenressourcen (Mangan, Daten), die deshalb nie egal sind.
-- Frühe Anlagen bleiben über Upgrades bei 100/150/200 Stück, Synergien und Verstärkung relevant.
-- Mehrere Wege: Die drei Protokolle führen alle zuverlässig nach Hadal, aber mit unterschiedlichem Tempo und Spielgefühl (per Simulation geprüft).
-- Rechenschwache Stellen sind abgefangen: Werte über 1e300 werden gedeckelt, NaN/Infinity aus Speicherständen verworfen.
-
-**Simulation** (`node tests/simulate.js <min> <protokoll> <klicks/s> [2] [prüfintervall]`): Ein Bot spielt mit der echten Spiellogik und protokolliert Meilensteine. Typische Ergebnisse:
-
-| Spielertyp | Dämmerzone | Mitternacht | Abyssal | Hadal |
-|---|---|---|---|---|
-| optimaler Bot (kauft jede Sekunde) | ~7 min | ~22 min | ~50 min | ~87 min |
-| gemütlich (kauft alle 45 s, klickt wenig) | ~12 min | ~31 min | ~59 min | ~94 min |
-| 2. Lauf nach Gezeitenwende | ~5 min | ~15 min | ~35 min | ~65 min |
-
-Ein Mensch, der liest, ausprobiert und nicht immer optimal kauft, liegt erfahrungsgemäß darüber. Hadal und die erste Gezeitenwende landen damit im Bereich **~100–130 Minuten**. Beim Erreichen von Hadal gibt es ~10–15 Perlen, 30 min später ~30–40.
+| Horizont | Was passiert | Neue Entscheidungen |
+|---|---|---|
+| **0–15 min** | Puls, Planktonnetze, erste Upgrades, Dämmerzone (~7–12 min), erster Reaktor und erste Schmelze | Klicken vs. Bauen, erste Upgrades |
+| **15 min – 2 h** | Mangan, Station (Reaktor/Schmelze), Legierung, Mitternachtszone, Tech-Baum, Protokoll, Strömungen, Abyssal | Energie-/Platzbudget, Mangan aufteilen, erste Gabelungen |
+| **2–8 h** | Karte & Relikte, Kristalle, Hadal, **erste Gezeitenwende** (~3,5–5 h), Gezeiten-Baum, Tiefenproben, **Schlund** (~6–10 h) | Ausbeuten vs. Bergen, Build-Wahl, Respec, Probe statt Wende? |
+| **8–20 h** | Viele kurze Läufe mit wechselnden Builds, Probestufen, Relikt-Sammlung, Capstones, **Herzkammer** (~20 h) | Kristall-/Datenoptimierung, Druckresonator-Platzierung, Proben-Reihenfolge |
+| **20–50 h** | **Weltenwende** (~20–30 h), Ursprung, Erbstationen, Kommandozentrale, Tiefenrekord | Was zuerst im Ursprung? Welche Erbstation passt zu welchem Build? |
+| **50 h+** | Wiederholbare Ebenen: Ewiges Licht (40 Stufen), Perlenstrom, Tiefenrekord (endlos), Gezeitengedächtnis (40 Stufen), Proben bis Stufe 3, Relikte bis Stufe 3 | Optimierung von Zyklus-Länge, Builds und Erbstationen |
 
 ---
 
-## Technik
+## Spielmechaniken im Detail
 
-- **Zeit**: Die Produktion wird aus der real vergangenen Zeit berechnet (`Date.now()`), nicht aus Timer-Ticks. Große Zeitsprünge werden in Schritte von max. 60 s geteilt, zusätzlich exakt an Boost- und Expeditions-Enden. Ein Sprung über 600 s liefert also genau dasselbe Ergebnis wie 6.000 Schritte à 0,1 s (per Test geprüft).
-- **Hintergrund-Tabs**: Gedrosselte Timer verfälschen nichts. Lücken über 60 s (Ruhezustand, eingefrorener Tab) werden wie Offline-Zeit behandelt, also gedeckelt und mit Bericht.
-- **Offline-Fortschritt**: volle Produktion für bis zu 4 h. Erweiterbar über Forschung (+4 h), Strömungs-Protokoll (+4 h) und Perlen-Erbe (+2 h/Stufe). Nach der Rückkehr zeigt ein Bericht, wie lange du weg warst, was angerechnet wurde und was entstanden ist.
-- **Speichern**: Autosave alle 15 s, zusätzlich beim Verbergen/Schließen des Tabs, bei Abstieg und Gezeitenwende. Speichern geht auch manuell. Jedes Speichern legt ein Backup des vorherigen Stands an. Ist der Hauptstand kaputt, wird automatisch das Backup geladen.
-- **Export/Import**: als Text (`ABYSSAL1:` + Base64) oder als Datei. Importe werden vollständig validiert: unbekannte Felder werden verworfen, Zahlen auf gültige Bereiche geklemmt, IDs gegen die Konfiguration geprüft, die Version kontrolliert. Kaputte Daten werden mit verständlicher Meldung abgelehnt, der aktuelle Stand bleibt unangetastet.
-- **Zahlen**: JavaScript-`Number` (doppelte Genauigkeit, ~15 signifikante Stellen, bis 1,8e308). Das reicht hier, weil Werte nur auf 3 Stellen angezeigt werden und die Progression weit unter dem Grenzwert bleibt. Eine Big-Number-Bibliothek hätte nur Abhängigkeiten und Rechenzeit gekostet.
+### Zonen
+| Zone | Tiefe | Voraussetzung | Neu |
+|---|---|---|---|
+| Schelfkante | 0 m | – | Planktonnetze, Leuchtalgen, Aufträge |
+| Dämmerzone | 200 m | Lumen | Mangan, Verstärkung, **Station** (Reaktor, Schmelze), Legierung |
+| Mitternachtszone | 1.000 m | Lumen, Mangan, Legierung | Daten, **Tech-Baum**, Protokolle, **Strömungen**, Kühlturm/Relais/Labor/Prisma |
+| Abyssal | 4.000 m | + Daten | **Karte**, Relikte, **Fertigung** (Kristalle), Dock, Tiefbohrer, +1 Rasterzeile |
+| Hadal | 8.000 m | Kristalle u. a. | Tiefenherzen, **Gezeitenwende** |
+| Schlund | 11.000 m | 1 Gezeitenwende | Schlundgärten, **Druckresonator** |
+| Herzkammer | 15.000 m | 3 Gezeitenwenden | Kernresonanz, **Tiefenrekord**, **Weltenwende** |
+
+### Station
+- Raster anfangs 3×3, erweiterbar auf bis zu 6×6: per Tech-Baum (Erweiterter Rumpf), beim Erreichen des Abyssals, im Gezeiten-Baum (Großindustrie) und im Ursprung (Weites Raster).
+- **Module:** Reaktor (+Energie), Schmelze, Fertigung, Sonarlabor, Prisma (+Lumen %), U-Boot-Dock, Kühlturm (Nachbarn +35 % bzw. Reaktoren +25 %), Relais (Nachbarn −40 % Energie), Druckresonator (Nachbarn ×1,5).
+- **Stufen 1–20:** Leistung pro Stufe = Stufe × 1,25^(Stufe−1), Kosten ×2,3 pro Stufe.
+- **Verschieben ist kostenlos**, denn Nachbarschaft soll man ausprobieren können. Beim Abreißen gibt es 50 % der Baukosten zurück.
+- Bei zu wenig Energie laufen alle Verbraucher anteilig. Fehlt ein Rohstoff, laufen die Verarbeiter nur so weit, wie Lager und Zufluss reichen. Bestände werden nie negativ.
+- „Verarbeitung pausieren“ schaltet alle Schmelzen und Fertigungen mit einem Klick ab, z. B. wenn der nächste Abstieg Mangan oder Daten braucht.
+
+### Tech-Baum (pro Lauf)
+24 Knoten in Biologie / Industrie / Navigation. **Gabelungen:**
+- *Flachwasserzucht* (frühe Anlagen ×4) vs. *Tiefenzucht* (tiefe Anlagen ×2,5)
+- *Kaltschmelze* (kein Lumen, mehr Mangan) vs. *Lichtschmelze* (kein Mangan, dafür 6.000 Lumen pro Legierung; wird mit wachsender Lumen-Produktion immer besser)
+- *Kristallzucht* (keine Daten, langsamer) vs. *Datenkompression* (schneller, 2,5× Daten)
+- *Breitband-Sonar* (Daten ×2) vs. *Tiefensonar* (U-Boote schneller, Bergungen ergiebiger)
+
+Umrüsten ist jederzeit möglich und kostet den vollen Knotenpreis.
+
+### Gezeitenwende & Gezeiten-Baum
+- **Perlen** = ⌊10 · (Lumen des Laufs / 5·10¹³)^0,3 · Tiefenfaktor · Boni⌋. Der Tiefenfaktor gibt +25 % pro Zone jenseits von Hadal.
+- Jede in diesem Zyklus verdiente Perle erhöht die Produktion: ×(1 + 0,25 · log₁₀(1 + Perlen)²). Das Wachstum ist bewusst langsam, damit es sich nicht aufschaukelt.
+- Das Gezeiten-Fenster zeigt **Perlen pro Stunde**. Sinkt der Wert, lohnt sich die Wende meist. Pflicht ist sie nie.
+- Der Baum hat **4 Zweige** mit je einer Gabel und max. 2 Capstones (3 mit Ursprung). Bei jeder Wende lässt er sich kostenlos neu verteilen.
+- Capstones: *Großindustrie* (Raster +1, Module ½ Preis), *Sturmflut* (Überladung +3 und beschleunigt Ketten), *Schwarmgeist* (Auto-Forschung/-Abstieg), *Abgrundgänger* (Tiefenbonus, tiefe Zonen ½ Preis).
+
+### Tiefenproben
+Starten einen neuen Lauf mit Sonderregel, aber ohne Perlen. Ziele: Abyssal, Hadal, Schlund. Die Belohnungen sind dauerhaft, auch über Weltenwenden hinweg:
+- Stille Wasser (kein Puls) → +30 % Produktion/Stufe
+- Erzarmut (Mangan ÷10) → Kettenrezepte −15 % Input/Stufe
+- Stromausfall (Reaktoren ½) → Reaktoren +25 %/Stufe
+- Blindflug (keine Bojen-Daten) → Tech-Baum −12 %/Stufe
+- Ohne Auftrieb (kein Tiefenbonus) → +0,05 Tiefenbonus/Stufe
+- Einsiedler (keine Karte) → +1 Außenposten/Stufe
+
+Eine Probe lässt sich jederzeit abbrechen. Dann fällt die Regel weg und der Lauf geht normal weiter.
+
+### Weltenwende & Ursprung
+- **Urlicht** = ⌊4 · (log₁₀ Perlen des Zyklus − 2)^1,5⌋. Logarithmisch, deshalb bringt jede Weltenwende ähnlich viel und nichts explodiert.
+- Zurückgesetzt werden alles aus der Gezeitenwende plus Perlen und Gezeiten-Baum. Urlicht, Ursprung, Relikte, Proben, Tiefenrekord und Logbuch bleiben, ebenso die Freischaltung von Schlund und Herzkammer.
+- **Ursprung:** Ewiges Licht, Perlenstrom, Weites Raster, Doppelprotokoll, Drittes Kapitel, Kommandozentrale, Erbstationen, Reliktresonanz.
+- **Erbstationen:** *Schmiede* (Start mit Modulen und Legierung), *Forschungsschiff* (Tech-Baum günstiger, Daten ×2), *Jäger* (mehr U-Boote/Außenposten).
+
+### Weiteres
+- **Irrlichter:** seltene, faire Ereignisse. Wahrscheinlichkeiten stehen im Ziele-Tab.
+- **Überladung:** aktive Fähigkeit (Taste `Q`).
+- **Automatik:** Freischaltbar über Gezeiten-Baum und Ursprung, jede Funktion einzeln abschaltbar in den Einstellungen. Gabelungen werden von der Automatik nie umgeworfen.
+
+---
+
+## Balancing
+
+Alle Zahlen stehen in **`js/config.js`**: Kosten, Raten, Rezepte, Module, Baum-Knoten, Strömungen, Sektoren, Relikte, Proben, Prestige-Formeln, Aufträge.
+
+**Leitlinien:**
+- Kein Strecken durch Wartezeiten. Gebremst wird durch Ressourcen, die man selbst herstellen und verteilen muss.
+- **Lineare Ketten gegen exponentielles Lumen:** Modulstufen skalieren exponentiell, Tiefendruck und Rezeptwechsel sorgen dafür, dass Ketten im Spätspiel nicht absterben.
+- **Beide Prestige-Währungen wachsen unterlinear.** Perlen wachsen mit der Wurzel, ihr Produktionsbonus mit log², Urlicht logarithmisch. Ohne das schaukelten sich die Schleifen in den Simulationen auf 1e33 Lumen/s nach 36 h und Weltenwenden alle 20 Minuten auf.
+- **Kein Softlock:** Module lassen sich abschalten, abreißen und verschieben. Gabeln lassen sich umrüsten, Proben abbrechen. Die Station warnt vor Ressourcen-Konflikten mit dem nächsten Abstieg, vor zu hohem Lumen-Verbrauch der Schmelzen und vor fehlenden Modulen (z. B. „Abstieg braucht Kristalle – Fertigung bauen, ggf. Platz schaffen“). Diese Warnungen sind direkte Lehren aus den Simulationen: Bei Seeds, in denen der Bot genau diese Fehler machte, stand der Fortschritt stundenlang.
+
+**Simulation** (`node tests/simulate.js <stunden> <active|passive|idle> <flow|pulse|swarm|deep>`): Ein Bot spielt mit der echten Spiellogik inkl. Station, Gabeln, Karte, Strömungen, Wenden, Baum und Weltenwende. Weil Karte und Strömungen ausgewürfelt werden, stehen hier Spannen über mehrere Seeds (aktiv: 9 Seeds, passiv/idle: je 3 Seeds, je 22–40 h simuliert):
+
+| Profil | Mitternacht | Hadal | 1. Wende | Schlund | Herzkammer / 1. Weltenwende |
+|---|---|---|---|---|---|
+| Aktiv (kauft alle 5 s, klickt) | 0,5 h | 1,3–1,7 h | 2,3–2,7 h | 4,1–6,7 h | 9–20 h |
+| Passiv (alle 30 s, wenig Klicks) | – | 1,7–2,3 h | 2,7–3,3 h | ≤ 10–13 h | ~24 h (1 von 3 Seeds), sonst > 40 h |
+| Idle (alle 2 min, kein Klicken) | – | 2,1–3,0 h | 3,2–4,0 h | ≤ 11–12 h | > 40 h |
+
+Ein Mensch, der liest, ausprobiert und nicht perfekt optimiert, liegt bei aktivem Spiel grob beim 1,5-Fachen der aktiven Bot-Zeiten. Idle-Spieler profitieren zusätzlich von Offline-Zeit, die in diesen Werten nicht steckt.
+
+Alle Builds und Protokolle erreichen jede Phase, es gibt keine dominante Einzelstrategie. Die Unterschiede liegen in Tempo und Spielgefühl.
 
 ---
 
 ## Bedienung
 
-- **Maus/Touch**: alles klickbar. Gesperrte Knöpfe reagieren trotzdem und sagen, was fehlt (inkl. geschätzter Wartezeit).
-- **Tastatur**: `Leertaste` Puls (Gedrückthalten zählt nicht als Dauerfeuer), `Q` Überladung, `1`–`8` Tabs, `Esc` schließt Fenster, `Tab`/`Enter` für alle Knöpfe.
-- **Einstellungen** (Zahnrad): Animationen reduzieren (wird beim ersten Start automatisch aktiviert, wenn das Betriebssystem „Bewegung reduzieren“ meldet), Zahlenformat, Sound an/aus und Lautstärke, Speichern, Export/Import (Text und Datei), Tutorial neu starten, Spielstand löschen (nur nach Eingabe von „LÖSCHEN“).
-- **Responsive**: Desktop (zweispaltig), Tablet und Smartphone (einspaltig).
+- **Navigation:** Produktion · Verbesserungen · Verstärkung · Station · Forschung · Karte · Abstieg · Gezeiten · Ursprung · Ziele. Bereiche erscheinen erst, wenn sie relevant werden. Badges zeigen, wo etwas zu tun ist (`!` Entscheidung, `⚠` Engpass, Zahl = bezahlbar).
+- **Linke Spalte:** Lumen-Kern, aktive Boosts, Überladung, **Strömung** mit Vorschau, laufende Probe, Aufträge.
+- **Tastatur:** `Leertaste` Puls · `Q` Überladung · `H` Strömung halten · `1`–`0` Bereiche · `Esc` Fenster schließen.
+- **Einstellungen:** Animationen, Zahlenformat, Sound, Automatik-Schalter, Export/Import (Text & Datei), Reset (nur mit Bestätigungswort).
+- Gesperrte Knöpfe reagieren trotzdem und erklären, was fehlt, inkl. Wartezeit.
 
 ---
 
-## Tatsächlich implementierte Funktionen
+## Technik
 
-- 8 Lumen-Anlagen, 2 Mangan-Förderer, Sonarbojen
-- 56 Anlagen-Upgrades, 7 Synergien, 6 Puls- und 7 globale Upgrades
-- 5 Tiefenzonen mit Story-Texten und sich verändernder Grafik (Farben, Lichtstrahlen, Anzahl und Farbe der Leuchtwesen, Farbe des Kerns)
-- Verstärkungssystem (Mangan → einzelne Anlagen)
-- 15 Forschungsprojekte mit Voraussetzungen, dazu die wiederholbare Tiefenanalyse
-- 3 exklusive Protokolle (Spezialisierung) mit kostenpflichtigem Wechsel
-- Aktive Fähigkeit „Überladung“ mit Abklingzeit
-- Irrlichter (seltene Ereignisse) mit offen angezeigten Wahrscheinlichkeiten
-- 3 Expeditionen mit je 10 Artefakt-Stufen
-- 31 Aufträge, 55 Logbuch-Einträge, ausführliche Statistik inkl. Multiplikator-Aufschlüsselung
-- Gezeitenwende mit 9 Perlen-Erbe-Upgrades, inkl. Automaton (Auto-Kauf, abschaltbar)
-- Kontext-Tutorial (5 Schritte, überspringbar) und einmalige Erklärfenster bei jedem neuen System
-- Offline-Fortschritt mit Bericht und Obergrenze
-- Autosave, Backup, Export/Import (Text und Datei), validierter Import, sicherer Reset
-- Optionale synthetische Soundeffekte (erst nach der ersten Interaktion)
-- Kaufmengen ×1 / ×10 / ×25 / Max, erwarteter Produktionszuwachs pro Kauf, Fortschrittsbalken für Abstiege und Aufträge
+- **Struktur:** reine HTML/CSS/JS-Dateien, keine Abhängigkeiten. Die Logik (`config`, `format`, `state`, `economy`, `unlocks`, `actions`, `core`, `save`) ist DOM-frei und läuft auch in Node. Die UI ist aufgeteilt in `ui.js` (Kern, Navigation, Bausteine inkl. Baum-Renderer) sowie `ui-panels.js`, `ui-station.js`, `ui-research.js`, `ui-map.js` und `ui-tides.js`.
+- **Zeit:** Produktion nach real vergangener Zeit. Schritte werden an Boost-, U-Boot- und Strömungsgrenzen geteilt (max. 30 s), die Kette wird pro Schritt durch Lager und Zufluss begrenzt. Ein großer Schritt liefert dasselbe Ergebnis wie viele kleine (per Test geprüft).
+- **Offline:** volle Produktion bis zur Offline-Grenze (4 h, erweiterbar), U-Boote und Strömungen laufen weiter. *Tiefschlaf* verdoppelt die Offline-Produktion.
+- **Speichern:** Autosave alle 15 s plus bei Tab-Wechsel, Schließen, Abstieg und Resets. Jedes Speichern legt ein Backup an.
+- **Speicherformat v2 mit Migration von v1.** Importe werden vollständig validiert: IDs gegen die Config geprüft, Zahlen geklemmt, Gabeln bereinigt, unbekannte Felder verworfen.
+- **Große Zahlen:** JavaScript-`Number` mit Deckel bei 1e300. Die Prestige-Formeln sind so gedämpft, dass 40 h aktive Simulation bei rund 1e24–1e26 Lumen/s liegen, weit unter dem Deckel.
+- **Performance:** Effekte und Stationsflüsse werden gecacht. HTML mit Knöpfen wird höchstens 1×/s neu gezeichnet (sofort bei Strukturänderungen), damit Klicks nie verloren gehen.
 
 ---
 
 ## Durchgeführte Tests
 
-Alle Tests wurden in dieser Entwicklungsumgebung tatsächlich ausgeführt (Node 22, Chromium über Playwright 1.56).
+Alle Tests liefen in dieser Umgebung (Node 22, Chromium via Playwright 1.56).
 
-**Unit-Tests & Simulation:** `npm test` bzw. `node tests/run-tests.js` → **33/33 bestanden**
-- Formatierung, Kostenreihen, Max-Kauf
-- Käufe mit/ohne genug Ressourcen, Zonensperren, Upgrade-Bedingungen, Doppelkauf-Schutz
-- Verstärkung, Forschungs-Voraussetzungen, Protokollwahl und -wechsel, Abstieg
-- Produktion = Rate × Zeit, großer Schritt = viele kleine Schritte, exakte Boost-Enden, Expeditions-Abschluss
-- Ungültige Zeitwerte, Offline-Deckelung, kein Bericht bei kurzer Abwesenheit
-- Aufträge, Logbuch-Bonus
-- Prestige: nur ab Hadal, setzt nur Lauf-Werte zurück, Perlen-Erbe wirkt beim Reset, Perlenformel steigt monoton und flacht ab
-- Serialisierung, Export/Import-Roundtrip, 8 Varianten kaputter Importe, Reparatur ungültiger Einzelwerte
-- Bot-Simulation über 130 min: Meilensteine in plausiblen Zeiträumen; alle drei Protokolle erreichen Hadal; der zweite Lauf ist schneller
+**Unit-Tests & Simulationen:** `npm test` → **44/44 bestanden** (`npm run test:quick` ohne Langzeit-Sims: 41)
+- Kosten inkl. Zweitressourcen, Käufe, Upgrades, Verstärkung
+- Station: Energie, Teil-Energie, Verbrauch/Produktion, Input-Mangel ohne negative Bestände, Kühlturm/Relais/Nachbarschaft (auch diagonal = kein Effekt), gesperrte Felder, Verschieben, Abreißen, Fertigung, Verarbeitung pausieren
+- Tech-Gabeln (Rezeptwechsel, Umrüsten)
+- Strömungen: Start, Wechsel, Effekt, Halten
+- Karte: Erkunden, U-Boot-Limit, Außenposten-Limit und Bonus, Bergen, Relikt-Chancen, Dockplätze
+- Gezeitenwende: was zurückgesetzt wird und was bleibt; Baum-Voraussetzungen, Gabeln, Capstone-Limit, Respec-Erstattung, Startboni; Perlenformel; Zonensperre Schlund
+- Proben: Start ohne Perlen, Regel aktiv, Abschluss mit Dauerbelohnung, Abbruch
+- Weltenwende (logarithmisches Urlicht, Reset-Umfang), Ursprung, Erbstation, Tiefenrekord
+- Zeit: großer Schritt = viele kleine (inkl. Kette), Buff-Grenzen, Offline-Deckel, Tiefschlaf, laufende Scans, ungültige Zeiten, sehr große Werte
+- Speichern: Roundtrip aller neuen Systeme, 8 kaputte Importe, Reparatur ungültiger Felder, **Migration v1 → v2**
+- Langzeit-Bot: Meilensteine aktiv (14 h); passiv und idle ohne Sackgasse bis zur Wende; alle drei Protokolle erreichen Hadal
 
-**End-to-End im echten Browser:** `node tests/e2e.js [screenshot-ordner]` → **48/48 bestanden**
-- Start ohne JS-Fehler, Puls, erster Kauf, laufende Produktion
-- Blockierter Kauf mit Hinweis
-- Speichern + Reload (Stand erhalten, keine doppelten Elemente)
-- Offline-Fortschritt (2 h simuliert, Bericht + korrekte Menge)
-- Alle 8 Tabs in einer späten Spielphase ohne Fehler
-- Protokoll, Forschung, Expedition, Verstärkung, Überladung per UI
-- Abstieg, Gezeitenwende inkl. Doppelklick-Schutz, Reset der richtigen Werte, Erhalt von Logbuch und Perlen-Erbe nach Reload
-- Export, zwei kaputte Importe (abgelehnt, Zustand unverändert), gültiger Import
-- Tastatur: Leertaste, Zifferntasten, Kauf mit Enter
-- Irrlicht erscheint und lässt sich fangen
-- Einstellungen (reduzierte Animation, Zahlenformat), Reset nur mit Bestätigungswort
-- Kein horizontaler Überlauf bei 390, 768 und 1920 px Breite
+**End-to-End im Browser:** `node tests/e2e.js [screenshot-ordner]` → **70/70 bestanden** (3× hintereinander stabil)
+- Start, Puls, Kauf, Produktion, blockierter Kauf mit Hinweis
+- Speichern/Reload ohne doppelte Elemente, Offline-Bericht
+- Station per UI: bauen, verschieben, ein-/ausschalten, Produktion läuft, Verarbeitung pausieren, gesperrtes Feld erklärt
+- Alle 10 Bereiche in später Phase ohne JS-Fehler
+- Protokoll, Tech-Knoten, Gabel umrüsten (mit Rückfrage), Strömung halten per Taste
+- Karte: U-Boot entsenden, Rückkehr, Außenposten, Wrack bergen → Relikt
+- Abstieg, Gezeitenwende mit Doppelklick-Schutz und Respec, Relikte bleiben
+- Gezeiten-Baum per Klick, gesperrter Knoten erklärt sich, Probe starten → Puls gesperrt → Probe abbrechen
+- Tiefenrekord, Weltenwende, Ursprung kaufen
+- Export, kaputter Import, **Import eines v1-Spielstands mit Migration**, Re-Import
+- Tastatur (Leertaste, Ziffern, Enter), Irrlicht, Einstellungen, Reset mit Bestätigungswort
+- Kein horizontaler Überlauf bei 390 / 768 / 1920 px
 
-Zusätzlich lief ein beschleunigter Komplett-Durchlauf im Browser (Bot spielt bis zur Prestige-Reife, UI rendert dabei alle Tabs). Dabei traten keine JS-Fehler auf.
-
-**Nicht getestet:** echte 2 Stunden Echtzeit-Spiel durch einen Menschen, andere Browser als Chromium, echte Touch-Geräte, Screenreader. Die 2-Stunden-Kurve stammt aus den Simulationen oben.
+**Nicht getestet:** echtes Spielen durch Menschen über viele Stunden (die Zeitangaben sind Bot-Simulationen), andere Browser als Chromium, echte Touch-Geräte, Screenreader.
 
 ---
 
 ## Bekannte Einschränkungen
 
-- Speicherstände liegen im Browser-Speicher. Wer Browserdaten löscht, verliert sie. Deshalb gelegentlich exportieren.
-- Firefox kann `localStorage` unter `file://` je nach Datenschutzeinstellung einschränken (siehe Hinweis oben).
-- Nach der ersten Gezeitenwende gibt es keine weitere große Mechanik-Stufe. Die Langzeitmotivation kommt aus dem Perlen-Erbe (inkl. Doppelprotokoll), schnelleren Läufen, den restlichen Logbuch-Einträgen und den Post-Prestige-Aufträgen. Für deutlich mehr als ~4–6 Stunden Spielzeit wären weitere Systeme nötig.
-- Die Sounds sind bewusst schlicht (synthetisch erzeugt, keine Musik).
+- Die Zeithorizonte stammen aus Simulationen. Menschen spielen anders als der Bot, etwa 1,5× langsamer bei aktivem Spiel. Passive Spieler kommen deutlich langsamer voran, aber ohne Sackgasse.
+- Der Bot nutzt Nachbarschaftsboni kaum. Wer die Station geschickt plant, ist schneller als in der Tabelle.
+- Ab etwa 60–100 Stunden besteht der Fortschritt aus wiederholbaren Systemen (Ursprung, Tiefenrekord, Baumstufen). Neue Mechaniken kommen dann nicht mehr dazu.
+- Speicherstände liegen im Browser. Wer Browserdaten löscht, verliert sie, deshalb gelegentlich exportieren.
+- Sound ist bewusst schlicht (synthetisch, keine Musik).

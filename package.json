@@ -1,11 +1,12 @@
 {
   "name": "abyssal-idle",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "ABYSSAL – ein Tiefsee-Idle-Game für den Browser (ohne Abhängigkeiten).",
+  "description": "ABYSSAL – ein Tiefsee-Incremental-Game für den Browser (ohne Abhängigkeiten).",
   "scripts": {
     "test": "node tests/run-tests.js",
-    "sim": "node tests/simulate.js 150 swarm 1.5",
+    "test:quick": "node tests/run-tests.js --quick",
+    "sim": "node tests/simulate.js 24 active flow",
     "e2e": "node tests/e2e.js"
   }
 }
